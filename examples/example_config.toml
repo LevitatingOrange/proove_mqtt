@@ -1,5 +1,6 @@
 enable_compat = true # required
 broker = "" #required mqtt broker, hostname:port
+root_topic = "" #optional root topic for mqtt, default is "proove"
 tries = 5 #number of sends, can be overwritten per group and device
 house_id = 20 #id of the house, can be overwritten per group, maximum id allowed is 2^26; won't be used for groups that disabled compat
 tx_pin = 11

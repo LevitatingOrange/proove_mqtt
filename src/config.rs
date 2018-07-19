@@ -1,4 +1,4 @@
-use failure::{Error, Fail};
+use failure::Error;
 use toml;
 use std::vec::Vec;
 use std::error;
@@ -51,11 +51,17 @@ enum ConfigError {
     }
 }
 
+fn default_topic() -> String {
+    "proove".to_owned()
+}
+
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub tx_pin: u64,
     enable_compat: bool,
     broker: String,
+    #[serde(default = "default_topic")]
+    root_topic: String,
     tries: usize,
     house_id: Option<u64>,
     groups: Vec<GroupConfig>,

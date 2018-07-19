@@ -14,10 +14,9 @@
 /// switch, thus switching a group will switch each device one by one, but allow 
 /// for greater flexibility
 
-use failure::{Error, Fail};
+use failure::Error;
 
 use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
 
 const HOUSE_CODE_OFFSET: u32 = 6;
 const HOUSE_CODE_MASK: u32 = 0xFFFFFFC0;

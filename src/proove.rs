@@ -1,6 +1,7 @@
 use sysfs_gpio::{Direction, Pin};
 use std::thread::sleep;
 use std::time::Duration;
+use failure::Error;
 
 use devices::PacketSender;
 
@@ -15,12 +16,12 @@ pub struct Proove {
 }
 
 impl Proove {
-    pub fn new(pin: u64) -> Self {
+    pub fn new(pin: u64) -> Result<Self, Error> {
         let pin = Pin::new(pin);
-        pin.export();
-        pin.set_direction(Direction::Out);
-        pin.set_value(0);
-        Proove {tx_pin: pin}
+        pin.export()?;
+        pin.set_direction(Direction::Out)?;
+        pin.set_value(0)?;
+        Ok(Proove {tx_pin: pin})
     }
 
     fn send_pulse(&mut self, value: bool) {
@@ -57,7 +58,7 @@ impl Proove {
 }
 
 impl PacketSender for Proove {
-    fn send_packet(&mut self, mut packet: u32) {
+    fn send_packet(&mut self, packet: u32) {
         self.send_sync();
         for i in (0..32).rev() {
             println!("{}", i);

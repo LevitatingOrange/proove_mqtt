@@ -17,7 +17,7 @@ use proove::Proove;
 fn main() {
     let args: Vec<String> = args().take(2).collect();
     let config = load_config(Some(&args[1])).unwrap();
-    let tx = Proove::new(config.tx_pin);
+    let tx = Proove::new(config.tx_pin).unwrap();
     let devices = create_devices(config).unwrap();
     
     let mut manager = DeviceManager::new(devices, tx);
