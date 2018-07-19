@@ -1,0 +1,25 @@
+enable_compat = true # required
+broker = "" #required mqtt broker, hostname:port
+tries = 5 #number of sends, can be overwritten per group and device
+house_id = 20 #id of the house, can be overwritten per group, maximum id allowed is 2^26; won't be used for groups that disabled compat
+tx_pin = 11
+
+[[groups]] #at least one required
+enable_compat = true # optional, override parent; enabling this will use prooves structure
+group_id = 10 #required, group id, maximum id allowed is 3.
+name = "room" # optional name of the group and mqtt topic, else gid will be used as topic. Must be unique
+tries = 5 # optional, override global tries
+house_id = 20 #id of the house, can be overwritten per group, maximum id allowed is 2^26.
+[[groups.devices]] # at least one per group required
+device_id = 2 #required, id of device, maximum id allowed is 3.
+name = "lamp" # optional name of the device and mqtt topic, else id will be used as topic. Must be uniqe
+tries = 5 # optional, override global tries, for that hard-to-reach, unresponsive device
+
+[[groups]]
+enable_compat = false # optional, override parent
+name = "room2" # here required name of the group and mqtt topic, else gid will be used as topic. Must be unique
+tries = 5 # optional, override global tries
+[[groups.devices]] # at least one per group required
+device_id = 2 #required, id of device, here a global id for more flexibility, as it can be max 2^30
+name = "lamp" # optional name of the device and mqtt topic, else id will be used as topic. Must be uniqe
+tries = 5 # optional, override global tries, for that hard-to-reach, unresponsive device
