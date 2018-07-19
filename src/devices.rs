@@ -1,4 +1,4 @@
-/// Proove packet structure is 
+/// Proove packet structure is
 /// ```
 /// HHHH HHHH HHHH HHHH HHHH HHHH HHGO CCEE
 /// \                               \\ \ \____________ device id
@@ -11,15 +11,14 @@
 /// Using only 2 bits for device and group id can be severly limiting. Therefore
 /// you can specfiy `enable_compat=false` in the config. Then ids will be spread
 /// out on house, group and device ids. This disallows the use of the group
-/// switch, thus switching a group will switch each device one by one, but allow 
+/// switch, thus switching a group will switch each device one by one, but allow
 /// for greater flexibility
-
 use failure::Error;
 
 use std::collections::HashMap;
 
 const HOUSE_CODE_OFFSET: u32 = 6;
-const HOUSE_CODE_MASK: u32 = 0xFFFFFFC0;
+const HOUSE_CODE_MASK: u32 = 0xFFFF_FFC0;
 const GROUP_SWITCH_OFFSET: u32 = 5;
 const GROUP_SWITCH_MASK: u32 = 0x20;
 const DEVICE_SWITCH_OFFSET: u32 = 4;
@@ -34,12 +33,22 @@ pub struct Group {
     house_id: Option<u64>,
     group_id: Option<u64>,
     devices: HashMap<String, Device>,
-    tries: Option<usize>
+    tries: Option<usize>,
 }
 
 impl Group {
-    pub fn new(house_id: Option<u64>, group_id: Option<u64>, devices: HashMap<String, Device>, tries: Option<usize>) -> Self {
-        Group {house_id, group_id, devices, tries}
+    pub fn new(
+        house_id: Option<u64>,
+        group_id: Option<u64>,
+        devices: HashMap<String, Device>,
+        tries: Option<usize>,
+    ) -> Self {
+        Group {
+            house_id,
+            group_id,
+            devices,
+            tries,
+        }
     }
 
     pub fn get_proove_packet(&self, status: bool) -> Option<u32> {
@@ -61,7 +70,12 @@ pub struct Device {
 
 impl Device {
     pub fn new(house_id: u64, group_id: u64, device_id: u64, tries: usize) -> Self {
-        Device {house_id, group_id, device_id, tries}
+        Device {
+            house_id,
+            group_id,
+            device_id,
+            tries,
+        }
     }
 
     pub fn get_proove_packet(&self, status: bool) -> u32 {
@@ -74,19 +88,14 @@ impl Device {
     }
 }
 
-
 #[derive(Debug, Fail)]
 enum ManagementError {
     #[fail(display = "Group '{}' not found.", group_name)]
-    GroupNotFound {
-        group_name: String,
-    },
+    GroupNotFound { group_name: String },
     #[fail(display = "Device '{}' not found.", device_name)]
-    DeviceNotFound {
-        device_name: String,
-    },
+    DeviceNotFound { device_name: String },
     #[fail(display = "Library inconsistency, this should not happen. Please report to authors.")]
-    Inconsistency
+    Inconsistency,
 }
 
 pub trait PacketSender {
@@ -95,18 +104,23 @@ pub trait PacketSender {
 
 pub struct DeviceManager<T: PacketSender> {
     groups: HashMap<String, Group>,
-    tx: T
+    tx: T,
 }
 
-impl <T: PacketSender> DeviceManager<T> {
+impl<T: PacketSender> DeviceManager<T> {
     pub fn new(groups: HashMap<String, Group>, tx: T) -> Self {
-        DeviceManager {groups, tx}
+        DeviceManager { groups, tx }
     }
 
     pub fn set_group_state(&mut self, group_name: String, state: bool) -> Result<(), Error> {
-        let group = self.groups.get(&group_name).ok_or(ManagementError::GroupNotFound {group_name})?;
+        let group = self
+            .groups
+            .get(&group_name)
+            .ok_or(ManagementError::GroupNotFound { group_name })?;
         if let Some(tries) = group.tries {
-            let packet = group.get_proove_packet(state).ok_or(ManagementError::Inconsistency)?;
+            let packet = group
+                .get_proove_packet(state)
+                .ok_or(ManagementError::Inconsistency)?;
             println!("packet: {:032b}", packet);
             for _ in 0..tries {
                 self.tx.send_packet(packet);
@@ -123,9 +137,20 @@ impl <T: PacketSender> DeviceManager<T> {
         Ok(())
     }
 
-    pub fn set_device_state(&mut self, group_name: String, device_name: String, state: bool) -> Result<(), Error> {
-        let group = self.groups.get(&group_name).ok_or(ManagementError::GroupNotFound {group_name})?;
-        let device = group.devices.get(&device_name).ok_or(ManagementError::DeviceNotFound {device_name})?;
+    pub fn set_device_state(
+        &mut self,
+        group_name: String,
+        device_name: String,
+        state: bool,
+    ) -> Result<(), Error> {
+        let group = self
+            .groups
+            .get(&group_name)
+            .ok_or(ManagementError::GroupNotFound { group_name })?;
+        let device = group
+            .devices
+            .get(&device_name)
+            .ok_or(ManagementError::DeviceNotFound { device_name })?;
         let packet = device.get_proove_packet(state);
         println!("packet: {:032b}", packet);
         for _ in 0..device.tries {

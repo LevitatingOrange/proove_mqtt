@@ -9,21 +9,24 @@ mod config;
 mod devices;
 mod proove;
 
-use std::env::args;
-use config::{load_config, create_devices};
+use config::{create_devices, load_config};
 use devices::DeviceManager;
 use proove::Proove;
+use std::env::args;
 
 fn main() {
-    let args: Vec<String> = args().take(2).collect();
+    let args: Vec<String> = args().take(4).collect();
     let config = load_config(Some(&args[1])).unwrap();
     let tx = Proove::new(config.tx_pin).unwrap();
     let devices = create_devices(config).unwrap();
-    
+
     let mut manager = DeviceManager::new(devices, tx);
 
-    manager.set_device_state("Lennarts Zimmer".to_owned(), "Klavierlampe".to_owned(), true).unwrap();
-    manager.set_group_state("Lennarts Zimmer".to_owned(), true).unwrap();
-    manager.set_group_state("Fabis Zimmer".to_owned(), true).unwrap();
-    manager.set_device_state("Fabis Zimmer".to_owned(), "Stehlampe".to_owned(), true).unwrap();
+    manager
+        .set_device_state(
+            args[2].clone(),
+            args[3].clone(),
+            true,
+        )
+        .unwrap();
 }

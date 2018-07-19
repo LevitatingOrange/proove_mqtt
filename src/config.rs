@@ -1,11 +1,11 @@
+use devices::{Device, Group};
 use failure::Error;
-use toml;
-use std::vec::Vec;
+use std::collections::HashMap;
 use std::error;
-use devices::{Group, Device};
 use std::fs::File;
 use std::io::Read;
-use std::collections::HashMap;
+use std::vec::Vec;
+use toml;
 
 const DEFAULT_PATH: &str = "~/.proove_mqtt.toml";
 
@@ -16,9 +16,9 @@ const MAX_ID: u64 = 1_073_741_824; // 2^30
 
 fn derive_ids(mut id: u64) -> (u64, u64, u64) {
     let x = id & 0b11;
-    id = id >> 2;
+    id >>= 2;
     let y = id & 0b11;
-    id = id >> 2;
+    id >>= 2;
     let z = id;
     (z, y, x)
 }
@@ -36,19 +36,16 @@ enum ConfigError {
     #[fail(display = "If compat disabled, groups must have a unique name.")]
     NameNotSet,
     #[fail(display = "Group name {} not unique.", group_name)]
-    GroupNotUnique {
-        group_name: String,
-    },
+    GroupNotUnique { group_name: String },
     #[fail(display = "Device name {} not unique.", device_name)]
-    DeviceNotUnique {
-        device_name: String,
-    },
-    #[fail(display = "{} is too large for a {}; maximum is {}. Disable compat for larger device ids or use multiple groups", value, name, max)]
-    OutOfBounds {
-        value: u64,
-        name: String,
-        max: u64
-    }
+    DeviceNotUnique { device_name: String },
+    #[fail(
+        display = "{} is too large for a {}; maximum is {}. Disable compat for larger device ids or use multiple groups",
+        value,
+        name,
+        max
+    )]
+    OutOfBounds { value: u64, name: String, max: u64 },
 }
 
 fn default_topic() -> String {
@@ -74,14 +71,14 @@ struct GroupConfig {
     house_id: Option<u64>,
     name: Option<String>,
     tries: Option<usize>,
-    devices: Vec<DeviceConfig>
+    devices: Vec<DeviceConfig>,
 }
 
 #[derive(Debug, Deserialize)]
 struct DeviceConfig {
     device_id: u64,
     name: Option<String>,
-    tries: Option<usize>
+    tries: Option<usize>,
 }
 
 pub fn load_config(path: Option<&str>) -> Result<Config, Box<error::Error>> {
@@ -97,45 +94,99 @@ pub fn load_config(path: Option<&str>) -> Result<Config, Box<error::Error>> {
 // TODO clones are ugly
 pub fn create_devices(config: Config) -> Result<HashMap<String, Group>, Error> {
     let mut groups = HashMap::with_capacity(config.groups.len());
-    for gc in config.groups.into_iter() {
+    for gc in config.groups {
         let mut devices = HashMap::with_capacity(gc.devices.len());
         let group = if gc.enable_compat.unwrap_or(config.enable_compat) {
             let group_id = gc.group_id.ok_or(ConfigError::GIDNotSet)?;
-            let house_id = gc.house_id.or(config.house_id).ok_or(ConfigError::HIDNotSet)?;
-            
-            ensure!(group_id < MAX_GID, ConfigError::OutOfBounds {value: group_id, name: "group id".to_owned(), max: MAX_GID});
-            ensure!(house_id < MAX_HID, ConfigError::OutOfBounds {value: house_id, name: "house id".to_owned(), max: MAX_HID});
+            let house_id = gc
+                .house_id
+                .or(config.house_id)
+                .ok_or(ConfigError::HIDNotSet)?;
+
+            ensure!(
+                group_id < MAX_GID,
+                ConfigError::OutOfBounds {
+                    value: group_id,
+                    name: "group id".to_owned(),
+                    max: MAX_GID
+                }
+            );
+            ensure!(
+                house_id < MAX_HID,
+                ConfigError::OutOfBounds {
+                    value: house_id,
+                    name: "house id".to_owned(),
+                    max: MAX_HID
+                }
+            );
 
             let tries = gc.tries.unwrap_or(config.tries);
             let group_name = gc.name.unwrap_or(format!("{}.{}", group_id, house_id));
 
-            for dc in gc.devices.into_iter() {
+            for dc in gc.devices {
                 let device_name = dc.name.unwrap_or(format!("{}", dc.device_id));
                 let tries = dc.tries.unwrap_or(tries);
-                
-                ensure!(dc.device_id < MAX_DID, ConfigError::OutOfBounds {value: dc.device_id, name: "device id".to_owned(), max: MAX_DID});
-                ensure!(devices.insert(device_name.clone(), Device::new(house_id, group_id, dc.device_id, tries)).is_none(), ConfigError::DeviceNotUnique{device_name: device_name});
+
+                ensure!(
+                    dc.device_id < MAX_DID,
+                    ConfigError::OutOfBounds {
+                        value: dc.device_id,
+                        name: "device id".to_owned(),
+                        max: MAX_DID
+                    }
+                );
+                ensure!(
+                    devices
+                        .insert(
+                            device_name.clone(),
+                            Device::new(house_id, group_id, dc.device_id, tries)
+                        )
+                        .is_none(),
+                    ConfigError::DeviceNotUnique {
+                        device_name
+                    }
+                );
             }
-            (group_name, Group::new(Some(house_id), Some(group_id), devices, Some(tries)))
+            (
+                group_name,
+                Group::new(Some(house_id), Some(group_id), devices, Some(tries)),
+            )
         } else {
             ensure!(gc.group_id.is_none(), ConfigError::GIDSet);
             ensure!(gc.house_id.is_none(), ConfigError::HIDSet);
-           
+
             let group_name = gc.name.ok_or(ConfigError::NameNotSet)?;
             let tries = gc.tries.unwrap_or(config.tries);
-            
-            for dc in gc.devices.into_iter() {
+
+            for dc in gc.devices {
                 let device_name = dc.name.unwrap_or(format!("{}", dc.device_id));
                 let tries = dc.tries.unwrap_or(tries);
-                
-                ensure!(dc.device_id < MAX_ID, ConfigError::OutOfBounds {value: dc.device_id, name: "global device id".to_owned(), max: MAX_ID});
-                
+
+                ensure!(
+                    dc.device_id < MAX_ID,
+                    ConfigError::OutOfBounds {
+                        value: dc.device_id,
+                        name: "global device id".to_owned(),
+                        max: MAX_ID
+                    }
+                );
+
                 let ids = derive_ids(dc.device_id);
-                ensure!(devices.insert(device_name.clone(), Device::new(ids.0, ids.1, ids.2, tries)).is_none(), ConfigError::DeviceNotUnique{device_name});
+                ensure!(
+                    devices
+                        .insert(device_name.clone(), Device::new(ids.0, ids.1, ids.2, tries))
+                        .is_none(),
+                    ConfigError::DeviceNotUnique { device_name }
+                );
             }
             (group_name, Group::new(None, None, devices, None))
         };
-        ensure!(groups.insert(group.0.clone(), group.1).is_none(), ConfigError::GroupNotUnique{group_name: group.0});
+        ensure!(
+            groups.insert(group.0.clone(), group.1).is_none(),
+            ConfigError::GroupNotUnique {
+                group_name: group.0
+            }
+        );
     }
     Ok(groups)
 }
