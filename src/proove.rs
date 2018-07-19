@@ -5,10 +5,10 @@ use sysfs_gpio::{Direction, Pin};
 
 use devices::PacketSender;
 
-const PULSE_HIGH: Duration = Duration::from_micros(250);
-const PULSE_ONE_LOW: Duration = Duration::from_micros(250);
-const PULSE_ZERO_LOW: Duration = Duration::from_micros(1250);
-const PULSE_SYNC_LOW: Duration = Duration::from_micros(2500);
+const PULSE_HIGH: Duration = Duration::from_micros(300);
+const PULSE_ONE_LOW: Duration = Duration::from_micros(300);
+const PULSE_ZERO_LOW: Duration = Duration::from_micros(1300);
+const PULSE_SYNC_LOW: Duration = Duration::from_micros(2550);
 const PULSE_PAUSE_LOW: Duration = Duration::from_micros(10000);
 
 pub struct Proove {
